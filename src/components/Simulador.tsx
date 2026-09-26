@@ -6,7 +6,6 @@ import {
   Volume2,
   AlertTriangle,
   CheckCircle,
-  Play,
   RotateCcw,
   Award,
   ArrowUp,
@@ -14,8 +13,11 @@ import {
   ArrowLeft,
   ArrowRight,
   Flame,
+  Lightbulb,
+  Radio,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { machineryAudio } from '../utils/machineryAudio';
 
 interface Props {
   initialMachine?: 'excavadora' | 'cargador' | 'retroexcavadora';
@@ -33,8 +35,7 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
   const [pressurePsi, setPressurePsi] = useState(0);
   const [hornSounded, setHornSounded] = useState(false);
   
-  // Mission Sequence Progress
-  const [currentStep, setCurrentStep] = useState(0);
+  // Mission Tracking
   const [errors, setErrors] = useState<string[]>([]);
   const [logs, setLogs] = useState<string[]>([
     'Sistema de Simulación iniciado. Realice la secuencia de arranque segura.',
@@ -48,7 +49,7 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
 
   // Engine loop
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (engineRunning) {
       interval = setInterval(() => {
         setRpm((prev) => {
@@ -75,11 +76,13 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
   };
 
   const handleHorn = () => {
+    machineryAudio.playHorn();
     setHornSounded(true);
     addLog('🔊 [BOCINA] 1 toque reglamentario emitido: alerta preventiva a personal de piso.');
   };
 
   const handleSeatbelt = () => {
+    machineryAudio.playSwitch();
     if (!seatbeltFastened) {
       setSeatbeltFastened(true);
       addLog('✓ Cinturón de seguridad de 3 pulgadas abrochado correctamente.');
@@ -90,6 +93,7 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
   };
 
   const handleSafetyLever = () => {
+    machineryAudio.playSwitch();
     if (safetyLeverLocked) {
       if (!engineRunning) {
         addLog('⚠️ Precaución: Liberando palanca de seguridad antes del arranque.', true);
@@ -103,6 +107,7 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
   };
 
   const handleIgnition = () => {
+    machineryAudio.playSwitch();
     if (ignitionKey === 'OFF') {
       if (!seatbeltFastened) {
         addLog('❌ FALTA DE SEGURIDAD: Intentó dar contacto sin abrocharse el cinturón.', true);
@@ -116,6 +121,7 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
       if (!safetyLeverLocked) {
         addLog('❌ FALTA CRÍTICA: La palanca de seguridad debe estar bloqueada para dar arranque.', true);
       }
+      machineryAudio.playIgnitionStart();
       setIgnitionKey('START');
       setEngineRunning(true);
       addLog('🚀 Motor Diésel encendido. Ralentí bajo estabilizado.');
@@ -139,6 +145,7 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
       addLog('⚠️ Mandos bloqueados: Desbloquee la palanca roja de seguridad.', true);
       return;
     }
+    machineryAudio.playHydraulic();
     setBoomAngle((prev) => Math.max(0, Math.min(65, prev + delta)));
     addLog(`🕹️ Pluma ajustada a ${Math.round(boomAngle + delta)}°`);
   };
@@ -148,18 +155,74 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
       addLog('⚠️ Sin respuesta hidráulica (verifique motor o palanca de bloqueo).', true);
       return;
     }
+    machineryAudio.playHydraulic();
     setBucketAngle((prev) => Math.max(-30, Math.min(50, prev + delta)));
     addLog(`🕹️ Cucharón ajustado a ${Math.round(bucketAngle + delta)}°`);
   };
 
   const moveSwing = (delta: number) => {
     if (!engineRunning || safetyLeverLocked) {
-      addLog('⚠️ Giro inhabilitado.', true);
+      addLog('⚠️ Giro inhabilitado (verifique motor o palanca de bloqueo).', true);
       return;
     }
+    machineryAudio.playHydraulic();
     setSwingAngle((prev) => prev + delta);
     addLog(`🕹️ Giro de torreta: ${Math.round(swingAngle + delta)}°`);
   };
+
+  // Keyboard Shortcuts Listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't capture if user is typing in an input
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          handleHorn();
+          break;
+        case 'KeyB':
+          e.preventDefault();
+          handleSeatbelt();
+          break;
+        case 'KeyL':
+          e.preventDefault();
+          handleSafetyLever();
+          break;
+        case 'Enter':
+          e.preventDefault();
+          handleIgnition();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          moveBoom(10);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          moveBoom(-10);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          moveSwing(-30);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          moveSwing(30);
+          break;
+        case 'KeyW':
+          e.preventDefault();
+          moveBucket(15);
+          break;
+        case 'KeyS':
+          e.preventDefault();
+          moveBucket(-15);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
 
   const finishMission = () => {
     setIsCompleted(true);
@@ -189,8 +252,56 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
     setLogs(['Simulador reiniciado a condiciones pre-arranque.']);
   };
 
+  // Compute what the operator should do next
+  const getNextInstruction = () => {
+    if (!seatbeltFastened) {
+      return { step: '1', text: 'Abrocha tu cinturón de seguridad de 3 pulgadas (botón Cinturón o tecla B).' };
+    }
+    if (!hornSounded) {
+      return { step: '2', text: 'Emite 1 toque reglamentario de bocina para despejar el radio de giro (botón Bocina o Barra Espaciadora).' };
+    }
+    if (ignitionKey === 'OFF') {
+      return { step: '3', text: 'Gira la llave a contacto ON para diagnóstico de testigos (botón Contacto o Enter).' };
+    }
+    if (!engineRunning) {
+      return { step: '4', text: 'Arranca el motor Diésel con la palanca de seguridad bloqueada (botón Arrancar o Enter).' };
+    }
+    if (safetyLeverLocked) {
+      return { step: '5', text: 'Baja la palanca roja de seguridad (Traba OFF o tecla L) para habilitar la presión piloto.' };
+    }
+    return { step: '6', text: '¡Excelente! El sistema está presurizado. Acciona los joysticks (Flechas y W/S) para mover el equipo.' };
+  };
+
+  const nextInstruction = getNextInstruction();
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+      {/* Top Guided Steps Assistant Banner */}
+      <div className="bg-amber-500/10 border-b border-amber-500/30 px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-black text-xs">
+            {nextInstruction.step}
+          </div>
+          <div>
+            <span className="text-[11px] uppercase font-bold text-amber-400 block tracking-wider">
+              Guía de Operación Paso a Paso:
+            </span>
+            <span className="text-xs font-medium text-slate-200">
+              {nextInstruction.text}
+            </span>
+          </div>
+        </div>
+
+        <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-slate-400 bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800">
+          <span>⌨️ Atajos:</span>
+          <span className="text-amber-400 font-bold">Espacio</span> = Bocina |
+          <span className="text-amber-400 font-bold">B</span> = Cinturón |
+          <span className="text-amber-400 font-bold">L</span> = Traba |
+          <span className="text-amber-400 font-bold">Enter</span> = Llave |
+          <span className="text-amber-400 font-bold">Flechas</span> = Mandos
+        </div>
+      </div>
+
       {/* Simulator Header */}
       <div className="flex flex-wrap items-center justify-between p-6 bg-slate-950/80 border-b border-slate-800">
         <div>
@@ -228,7 +339,7 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
 
       {/* Simulator Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-        {/* Visual Cockpit / 2D/3D Machine Canvas Representation */}
+        {/* Visual Cockpit / 2D Kinematic Representation */}
         <div className="lg:col-span-7 p-6 bg-slate-950 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800 relative min-h-[480px]">
           {/* Machine Graphic & Visual State */}
           <div className="flex-1 flex flex-col items-center justify-center relative">
@@ -366,32 +477,35 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
 
               <div className="grid grid-cols-3 gap-2">
                 <button
+                  type="button"
                   onClick={handleSeatbelt}
-                  className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                  className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 ${
                     seatbeltFastened
                       ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300 font-bold'
                       : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-400'
                   }`}
                 >
                   <Shield className="w-5 h-5" />
-                  <span className="text-[11px] leading-tight">Cinturón</span>
+                  <span className="text-[11px] leading-tight">Cinturón (B)</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleHorn}
-                  className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                  className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 ${
                     hornSounded
                       ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold'
                       : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-400'
                   }`}
                 >
                   <Volume2 className="w-5 h-5" />
-                  <span className="text-[11px] leading-tight">Bocina</span>
+                  <span className="text-[11px] leading-tight">Bocina (Espacio)</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleSafetyLever}
-                  className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                  className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 ${
                     safetyLeverLocked
                       ? 'bg-red-950/50 border-red-500 text-red-300 font-bold'
                       : 'bg-emerald-950/50 border-emerald-500 text-emerald-300 font-bold'
@@ -399,15 +513,16 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
                 >
                   <AlertTriangle className="w-5 h-5" />
                   <span className="text-[11px] leading-tight">
-                    {safetyLeverLocked ? 'Traba ON' : 'Traba OFF'}
+                    {safetyLeverLocked ? 'Traba ON (L)' : 'Traba OFF (L)'}
                   </span>
                 </button>
               </div>
 
               {/* Ignition Switch Button */}
               <button
+                type="button"
                 onClick={handleIgnition}
-                className={`w-full py-3.5 px-4 rounded-xl border flex items-center justify-center gap-2 font-bold text-sm transition-all shadow-lg ${
+                className={`w-full py-3.5 px-4 rounded-xl border flex items-center justify-center gap-2 font-bold text-sm transition-all shadow-lg cursor-pointer active:scale-95 ${
                   engineRunning
                     ? 'bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-red-600/20'
                     : ignitionKey === 'ACC'
@@ -437,16 +552,18 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
                   <div className="text-[10px] font-bold text-slate-400 mb-2">Pluma (Boom)</div>
                   <div className="flex justify-center gap-2">
                     <button
+                      type="button"
                       onClick={() => moveBoom(-10)}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1"
+                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1 cursor-pointer active:scale-95"
                     >
-                      <ArrowDown className="w-3.5 h-3.5" /> Bajar
+                      <ArrowDown className="w-3.5 h-3.5" /> Bajar (↓)
                     </button>
                     <button
+                      type="button"
                       onClick={() => moveBoom(10)}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1"
+                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1 cursor-pointer active:scale-95"
                     >
-                      <ArrowUp className="w-3.5 h-3.5" /> Subir
+                      <ArrowUp className="w-3.5 h-3.5" /> Subir (↑)
                     </button>
                   </div>
                 </div>
@@ -456,16 +573,18 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
                   <div className="text-[10px] font-bold text-slate-400 mb-2">Cucharón (Bucket)</div>
                   <div className="flex justify-center gap-2">
                     <button
+                      type="button"
                       onClick={() => moveBucket(-15)}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1"
+                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1 cursor-pointer active:scale-95"
                     >
-                      Descargar
+                      Descargar (S)
                     </button>
                     <button
+                      type="button"
                       onClick={() => moveBucket(15)}
-                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1"
+                      className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1 cursor-pointer active:scale-95"
                     >
-                      Recoger
+                      Recoger (W)
                     </button>
                   </div>
                 </div>
@@ -476,16 +595,18 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
                 <span className="text-xs text-slate-300 font-medium">Giro de Torreta</span>
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={() => moveSwing(-30)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1"
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1 cursor-pointer active:scale-95"
                   >
-                    <ArrowLeft className="w-3 h-3" /> Izq
+                    <ArrowLeft className="w-3 h-3" /> Izq (←)
                   </button>
                   <button
+                    type="button"
                     onClick={() => moveSwing(30)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1"
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs flex items-center gap-1 cursor-pointer active:scale-95"
                   >
-                    Der <ArrowRight className="w-3 h-3" />
+                    Der (→) <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -495,14 +616,16 @@ export default function Simulador({ initialMachine = 'excavadora' }: Props) {
           {/* Action Completion Bar */}
           <div className="pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
             <button
+              type="button"
               onClick={resetSimulator}
-              className="p-2 text-slate-500 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-2 text-slate-500 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
               title="Reiniciar simulador"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
 
             <button
+              type="button"
               onClick={finishMission}
               disabled={!engineRunning}
               className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
