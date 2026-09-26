@@ -1,0 +1,103 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const maquinas = await getCollection('maquinas');
+---
+
+<BaseLayout
+  title="Catálogo de Maquinaria Pesada | Machinery Academy"
+  description="Fichas técnicas, modelos interactivos 3D, inspección pre-operacional y checklist para excavadoras, cargadores y retroexcavadoras."
+>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Header -->
+    <div class="mb-12">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-wider mb-3 border border-amber-500/20">
+        Catálogo Especializado 2026
+      </div>
+      <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight">
+        Flota de Entrenamiento para Operadores
+      </h1>
+      <p class="text-base text-slate-400 mt-3 max-w-2xl">
+        Selecciona una máquina para ingresar a su ficha técnica, interactuar con el modelo 3D, realizar la inspección pre-arranque y certificar tu aprendizaje con el quiz evaluador.
+      </p>
+    </div>
+
+    <!-- Machines Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {maquinas.map((m) => (
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between hover:border-amber-500/50 transition-all shadow-xl group">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-2.5 py-1 rounded text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                {m.data.category}
+              </span>
+              <span class="text-xs font-mono text-slate-400">
+                Nivel: {m.data.difficulty}
+              </span>
+            </div>
+
+            <h2 class="text-2xl font-bold text-white group-hover:text-amber-400 transition-colors">
+              {m.data.title}
+            </h2>
+            <div class="text-xs font-mono text-slate-500 mb-4">{m.data.model}</div>
+
+            <p class="text-sm text-slate-400 leading-relaxed mb-6">
+              {m.data.description}
+            </p>
+
+            <!-- Specs Grid -->
+            <div class="grid grid-cols-2 gap-2 bg-slate-950 p-4 rounded-2xl border border-slate-800 mb-6 font-mono text-xs">
+              <div>
+                <span class="text-slate-500 block text-[10px]">POTENCIA</span>
+                <span class="text-white font-bold">{m.data.specs.potenciaHp} HP</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block text-[10px]">PESO OPERATIVO</span>
+                <span class="text-white font-bold">{m.data.specs.pesoOperativoTn} Tn</span>
+              </div>
+              {m.data.specs.capacidadBaldeM3 && (
+                <div class="mt-2">
+                  <span class="text-slate-500 block text-[10px]">CAPACIDAD BALDE</span>
+                  <span class="text-white font-bold">{m.data.specs.capacidadBaldeM3} m³</span>
+                </div>
+              )}
+              {m.data.specs.profundidadExcavacionM && (
+                <div class="mt-2">
+                  <span class="text-slate-500 block text-[10px]">PROFUNDIDAD EXC.</span>
+                  <span class="text-white font-bold">{m.data.specs.profundidadExcavacionM} m</span>
+                </div>
+              )}
+            </div>
+
+            <!-- EPP Required preview -->
+            <div class="mb-6">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                EPP Obligatorio ({m.data.eppRequerido.length} ítems):
+              </span>
+              <div class="flex flex-wrap gap-1.5">
+                {m.data.eppRequerido.slice(0, 3).map((epp) => (
+                  <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                    🛡️ {epp.split(' ')[0]} {epp.split(' ')[1] || ''}
+                  </span>
+                ))}
+                {m.data.eppRequerido.length > 3 && (
+                  <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                    +{m.data.eppRequerido.length - 3} más
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <a
+            href={`/maquinas/${m.id}`}
+            class="w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider text-center transition-all shadow-md shadow-amber-500/20"
+          >
+            Abrir Módulo de Inspección 3D →
+          </a>
+        </div>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

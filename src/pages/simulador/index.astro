@@ -1,0 +1,51 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Simulador from '../../components/Simulador';
+---
+
+<BaseLayout
+  title="Simulador de Cabina de Operación | Machinery Academy"
+  description="Práctica interactiva de arranque seguro, palanca de traba hidráulica, mandos de joystick y secuencia de apagado reglamentario para maquinaria pesada."
+>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Header -->
+    <div class="mb-10 text-center max-w-3xl mx-auto">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-wider mb-3 border border-amber-500/20">
+        Módulo Práctico Virtual
+      </div>
+      <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight">
+        Simulador de Cabina & Secuencia de Mandos
+      </h1>
+      <p class="text-base text-slate-400 mt-3">
+        Ejecuta la secuencia de seguridad en cabina: colocación de cinturón, advertencia sonora con bocina, despresurización, manipulación de joysticks y protocolo de frenado.
+      </p>
+    </div>
+
+    <!-- Simulator React Island -->
+    <Simulador client:load />
+
+    <!-- Operational Tips / Instructions Below Simulator -->
+    <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl">
+        <div class="text-amber-400 text-lg font-bold mb-2">1. Regla de Oro Pre-Arranque</div>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Nunca gires la llave de ignición sin haber abrochado el cinturón de 3 puntos y emitido 1 toque de bocina para alertar a los obreros o señaleros en el radio de giro.
+        </p>
+      </div>
+
+      <div class="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl">
+        <div class="text-amber-400 text-lg font-bold mb-2">2. Desbloqueo Hidráulico</div>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          La palanca roja de bloqueo (Safety Lock Lever) debe bajarse únicamente cuando el operador esté en el asiento y con los pies sobre los pedales, lista la máquina para iniciar ciclo.
+        </p>
+      </div>
+
+      <div class="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl">
+        <div class="text-amber-400 text-lg font-bold mb-2">3. Enfriamiento y Apagado</div>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Antes de cortar la llave, deja el motor en ralentí bajo durante 3 a 5 minutos para permitir que el turboalimentador baje temperatura y no se cristalice el lubricante.
+        </p>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
