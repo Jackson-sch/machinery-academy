@@ -54,7 +54,7 @@ export default function Visor3D({ machineType, machineTitle, hotspots }: Props) 
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
@@ -288,11 +288,11 @@ export default function Visor3D({ machineType, machineTitle, hotspots }: Props) 
 
     // Animation Loop
     let animationFrameId: number;
-    let clock = new THREE.Clock();
+    const startTime = performance.now();
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
-      const elapsedTime = clock.getElapsedTime();
+      const elapsedTime = (performance.now() - startTime) / 1000;
 
       // Gentle pulse on hotspots
       hotspotMarkers.forEach((m, i) => {
